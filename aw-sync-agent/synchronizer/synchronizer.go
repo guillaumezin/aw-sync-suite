@@ -24,18 +24,16 @@ func Start(Config settings.Configuration, Plugins []models.Plugin) error {
 		return err
 	}
 
-	for watcher, data := range scrapedData {
+	for bucketName, scraped := range scrapedData {
 		log.Print("------------------------------------------------------------------")
-		log.Print("Processing data for watcher: ", watcher)
+		log.Print("Processing bucket: ", bucketName, " (metric: ", scraped.Client, ")")
 		log.Print("------------------------------------------------------------------")
 
-		log.Print("Aggregating data for watcher: [", watcher, "] ...")
-		aggregatedData := datamanager.AggregateData(Plugins, data, watcher, Config.Settings.UserID, Config.Settings.IncludeHostname) //metric names must not have '-'
-		err = datamanager.PushData(prometheusClient, Config.Settings.PrometheusUrl, Config.Settings.PrometheusSecretKey, aggregatedData, watcher)
+		aggregatedData := datamanager.AggregateData(Plugins, scraped.Events, scraped.Client, Config.Settings.UserID, Config.Settings.IncludeHostname)
+		err = datamanager.PushData(prometheusClient, Config.Settings.PrometheusUrl, Config.Settings.PrometheusSecretKey, aggregatedData, bucketName)
 		if err != nil {
 			return err
 		}
-
 	}
 	log.Print("==================================================================")
 	log.Print("Synchronization process finished successfully\n")

@@ -11,7 +11,7 @@ import (
 	"log"
 )
 
-func ScrapeData(awUrl string, excludedWatchers []string) (activitywatch.WatcherNameToEventsMap, error) {
+func ScrapeData(awUrl string, excludedWatchers []string) (activitywatch.BucketNameToScrapedData, error) {
 	if !activitywatch.HealthCheck(awUrl) {
 		return nil, errors.New("activityWatch is not reachable. Data will be pushed at the next synchronization")
 	}
@@ -21,19 +21,21 @@ func ScrapeData(awUrl string, excludedWatchers []string) (activitywatch.WatcherN
 	}
 
 	activitywatch.RemoveExcludedWatchers(buckets, excludedWatchers)
-	eventsMap := make(activitywatch.WatcherNameToEventsMap)
+	result := make(activitywatch.BucketNameToScrapedData)
 	for name, bucket := range buckets {
 		if !activitywatch.HealthCheck(awUrl) {
 			return nil, errors.New("activityWatch is not reachable. Data will be pushed at the next synchronization")
 		}
-		startPoint, lastID := checkpoint.Read(bucket.Client) // NOUVEAU : lastID
+		// NOUVEAU : clé de checkpoint = nom de bucket unique (name),
+		// jamais bucket.Client qui peut être partagé par plusieurs buckets.
+		startPoint, lastID := checkpoint.Read(name)
 		events, err := activitywatch.GetEvents(awUrl, name, startPoint, lastID, nil, nil)
 		if err != nil {
 			return nil, fmt.Errorf("error fetching events for bucket %s: %v", bucket.Client, err)
 		}
-		eventsMap[bucket.Client] = events
+		result[name] = activitywatch.ScrapedBucket{Events: events, Client: bucket.Client}
 	}
-	return eventsMap, nil
+	return result, nil
 }
 
 // AggregateData aggregates the data

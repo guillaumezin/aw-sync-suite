@@ -27,3 +27,10 @@ type Event struct {
 type Events []Event
 
 type WatcherNameToEventsMap map[string]Events
+
+type ScrapedBucket struct {
+	Events Events
+	Client string
+}
+
+type BucketNameToScrapedData map[string]ScrapedBucket
