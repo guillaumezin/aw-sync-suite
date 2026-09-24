@@ -26,7 +26,7 @@ func GetBuckets(awUrl string) (Watchers, error) {
 }
 
 // GetEvents gets the events from a specific bucket
-func GetEvents(awUrl string, bucket string, start *time.Time, end *time.Time, limit *int) (Events, error) {
+func GetEvents(awUrl string, bucket string, start *time.Time, lastID int, end *time.Time, limit *int) (Events, error) {
 	url := fmt.Sprintf("%s/api/0/buckets/%s/events", awUrl, bucket)
 	url = addQueryParams(url, start, end, limit)
 
@@ -41,18 +41,18 @@ func GetEvents(awUrl string, bucket string, start *time.Time, end *time.Time, li
 		return nil, err
 	}
 
-	// Filter out events that have the same timestamp as the start point
-	if start != nil {
-		filteredEvents := make(Events, 0, len(events))
-		for _, event := range events {
-			if !event.Timestamp.Equal(*start) {
-				filteredEvents = append(filteredEvents, event)
-			}
+	// Filtre fiable : ne garde que les événements dont l'ID (entier, stable)
+	// est strictement supérieur au dernier poussé. Remplace l'ancien filtre
+	// par égalité de timestamp, cassé par une perte de précision (6 vs 9
+	// décimales) entre le checkpoint et les timestamps réels d'AW.
+	filteredEvents := make(Events, 0, len(events))
+	for _, event := range events {
+		if event.ID > lastID {
+			filteredEvents = append(filteredEvents, event)
 		}
-		events = filteredEvents
 	}
 
-	return events, nil
+	return filteredEvents, nil
 }
 
 // addQueryParams adds query parameters to the get Events url

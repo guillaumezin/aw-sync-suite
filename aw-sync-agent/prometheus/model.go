@@ -5,6 +5,7 @@ import "time"
 type TimeSeries struct {
 	Labels []Label
 	Sample Sample
+	ID     int
 }
 
 type Label struct {
